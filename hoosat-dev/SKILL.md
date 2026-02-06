@@ -324,7 +324,7 @@ See [references/hrc20-tokens.md](references/hrc20-tokens.md) for:
 
 **PRIMARY:** Use `agent-wallet.py` for ALL wallet operations (create, manage, transact).
 
-**Note:** `generate-address.py` exists as a standalone utility but should NOT be used for agent workflows. Always use the agent wallet system for proper wallet management.
+## Agent Wallet System
 
 ### Features
 
@@ -359,20 +359,14 @@ The agent wallet system enables AI agents to actively manage Hoosat wallets and 
    - Call `manager.initialize(password)` 
    - Confirm: "Wallet system initialized at ~/.hoosat-wallets/"
 
-#### Create Wallet (USE THIS FOR ALL WALLET CREATION)
+#### Create Wallet
 **User says:** "Create wallet [name] on [network]", "Make a [name] wallet", "Generate wallet for [purpose]", "Give me a wallet"
 
-**⚠️ IMPORTANT: ALWAYS use agent-wallet.py for wallet creation. NEVER use generate-address.py.**
-
 **Agent actions:**
-1. **MUST use:** `python3 {skill_path}/scripts/agent-wallet.py`
-2. Check if wallet system is initialized
-3. If not initialized, do that first
-4. Unlock with password from environment/session
-5. Call: `manager.create_wallet(name, network)`
-6. Present results: Address and save location
-
-**Do NOT use generate-address.py** - it's a standalone utility, not part of the agent wallet system.
+1. Check if wallet system is initialized: `python3 scripts/agent-wallet.py list`
+2. If not initialized: `python3 scripts/agent-wallet.py init`
+3. Create wallet: `python3 scripts/agent-wallet.py create [name] --network [network]`
+4. Show result to user
 
 #### Check Balance
 **User says:** "Check balance of [wallet]", "How much HTN in [wallet]?", "What's the balance?"

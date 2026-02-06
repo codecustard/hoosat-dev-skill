@@ -450,36 +450,154 @@ class AgentWalletManager:
         self._address_book_cache = {}
 
 
-if __name__ == '__main__':
-    # Test wallet manager
-    manager = AgentWalletManager()
+def main():
+    """Main CLI entry point."""
+    import argparse
     
-    # Initialize
+    parser = argparse.ArgumentParser(description='Hoosat Agent Wallet Manager')
+    parser.add_argument('--password', '-p', help='Master password', default=None)
+    parser.add_argument('--wallet-dir', '-d', help='Wallet directory', default=None)
+    
+    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    
+    # Initialize command
+    init_parser = subparsers.add_parser('init', help='Initialize wallet system')
+    
+    # Create wallet command
+    create_parser = subparsers.add_parser('create', help='Create a new wallet')
+    create_parser.add_argument('name', help='Wallet name')
+    create_parser.add_argument('--network', '-n', default='mainnet', choices=['mainnet', 'testnet'])
+    
+    # List wallets command
+    list_parser = subparsers.add_parser('list', help='List all wallets')
+    
+    # Get wallet info command
+    info_parser = subparsers.add_parser('info', help='Get wallet info')
+    info_parser.add_argument('name', help='Wallet name')
+    
+    # Export wallet command
+    export_parser = subparsers.add_parser('export', help='Export wallet (shows private key)')
+    export_parser.add_argument('name', help='Wallet name')
+    
+    # Delete wallet command
+    delete_parser = subparsers.add_parser('delete', help='Delete a wallet')
+    delete_parser.add_argument('name', help='Wallet name')
+    
+    # Add address command
+    addaddr_parser = subparsers.add_parser('add-address', help='Add address to address book')
+    addaddr_parser.add_argument('label', help='Address label')
+    addaddr_parser.add_argument('address', help='Hoosat address')
+    
+    # List addresses command
+    listaddr_parser = subparsers.add_parser('list-addresses', help='List saved addresses')
+    
+    # Balance command (requires agent-transact.py)
+    balance_parser = subparsers.add_parser('balance', help='Check wallet balance (requires agent-transact)')
+    balance_parser.add_argument('name', help='Wallet name')
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    # Initialize manager
+    manager = AgentWalletManager(wallet_dir=args.wallet_dir)
+    
+    # Handle init command
+    if args.command == 'init':
+        if manager.is_initialized():
+            print("Wallet system already initialized")
+            return
+        
+        password = args.password or input("Set master password: ")
+        if manager.initialize(password):
+            print("✓ Wallet system initialized")
+        else:
+            print("✗ Failed to initialize")
+        return
+    
+    # Check if initialized
     if not manager.is_initialized():
-        manager.initialize('test_password_123')
-        print("✓ Wallet system initialized")
+        print("Wallet system not initialized. Run: init")
+        return
     
     # Unlock
-    if manager.unlock('test_password_123'):
-        print("✓ Wallet system unlocked")
+    password = args.password or input("Enter password: ")
+    if not manager.unlock(password):
+        print("✗ Invalid password")
+        return
     
-    # Create wallet
+    # Execute command
     try:
-        wallet = manager.create_wallet('mining', 'testnet')
-        print(f"✓ Created wallet: {wallet.name} - {wallet.address}")
+        if args.command == 'create':
+            wallet = manager.create_wallet(args.name, args.network)
+            print(f"✓ Created wallet: {wallet.name}")
+            print(f"  Address: {wallet.address}")
+            print(f"  Network: {wallet.network}")
+            print(f"\n⚠️  IMPORTANT: Backup your private key!")
+            print(f"  Run: export {wallet.name}")
+            
+        elif args.command == 'list':
+            wallets = manager.list_wallets()
+            if not wallets:
+                print("No wallets found")
+            else:
+                print(f"Wallets ({len(wallets)}):")
+                for name in wallets:
+                    info = manager.get_wallet_info(name)
+                    print(f"  - {name}: {info['address']} ({info['network']})")
+                    
+        elif args.command == 'info':
+            info = manager.get_wallet_info(args.name)
+            if info:
+                print(f"Wallet: {info['name']}")
+                print(f"Address: {info['address']}")
+                print(f"Network: {info['network']}")
+                print(f"Created: {info['created_at']}")
+            else:
+                print(f"Wallet '{args.name}' not found")
+                
+        elif args.command == 'export':
+            wallet = manager.get_wallet(args.name)
+            if wallet:
+                print(f"⚠️  SECURITY WARNING - Private Key for {args.name}:")
+                print(f"  Address: {wallet.address}")
+                print(f"  Private Key (hex): {wallet.private_key}")
+                print("\n  Save this securely and NEVER share it!")
+            else:
+                print(f"Wallet '{args.name}' not found")
+                
+        elif args.command == 'delete':
+            if manager.delete_wallet(args.name):
+                print(f"✓ Deleted wallet: {args.name}")
+            else:
+                print(f"Wallet '{args.name}' not found")
+                
+        elif args.command == 'add-address':
+            manager.add_address(args.label, args.address)
+            print(f"✓ Added address: {args.label} -> {args.address}")
+            
+        elif args.command == 'list-addresses':
+            addresses = manager.list_addresses()
+            if not addresses:
+                print("No saved addresses")
+            else:
+                print(f"Saved addresses ({len(addresses)}):")
+                for entry in addresses:
+                    print(f"  - {entry['label']}: {entry['address']}")
+                    
+        elif args.command == 'balance':
+            wallet = manager.get_wallet(args.name)
+            if not wallet:
+                print(f"Wallet '{args.name}' not found")
+                return
+            print(f"To check balance, use agent-transact.py:")
+            print(f"  python3 agent-transact.py balance {args.name}")
+            
     except Exception as e:
-        print(f"Wallet creation: {e}")
-    
-    # List wallets
-    wallets = manager.list_wallets()
-    print(f"✓ Wallets: {wallets}")
-    
-    # Add address
-    manager.add_address('exchange', 'hoosat:qz7ulu8mmmul6hdcnssmjnt28h2xfer8dz9nfqamvvh86ngef4q8dvzxcjdqe')
-    print("✓ Address added to address book")
-    
-    # Resolve address
-    resolved = manager.resolve_address('exchange')
-    print(f"✓ Resolved 'exchange' to: {resolved}")
-    
-    print("\nAll tests passed!")
+        print(f"Error: {e}")
+
+
+if __name__ == '__main__':
+    main()
