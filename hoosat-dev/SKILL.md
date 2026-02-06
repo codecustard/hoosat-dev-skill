@@ -339,15 +339,88 @@ The agent wallet system enables AI agents to actively manage Hoosat wallets and 
 - **Address Book**: Save and label frequently used addresses
 - **UTXO Consolidation**: Optimize wallet by combining small UTXOs
 
-### Quick Commands
+### Agent Execution Workflows
+
+**IMPORTANT: When user gives natural language commands, EXECUTE these workflows using the agent-wallet.py script.**
+
+#### Initialize Wallet System
+**User says:** "Initialize hoosat wallet", "Set up wallet system", "Initialize agent wallets"
+
+**Agent actions:**
+1. Check if already initialized: `test -f ~/.hoosat-wallets/wallets.enc`
+2. If not initialized:
+   - Ask user for master password or generate one
+   - Execute: `python3 {skill_path}/scripts/agent-wallet.py`
+   - Call `manager.initialize(password)` 
+   - Confirm: "Wallet system initialized at ~/.hoosat-wallets/"
+
+#### Create Wallet  
+**User says:** "Create wallet [name] on [network]", "Make a [name] wallet", "Generate wallet for [purpose]"
+
+**Agent actions:**
+1. Check if wallet system is initialized
+2. If not initialized, do that first
+3. Unlock with password from environment/session
+4. Execute: `python3 {skill_path}/scripts/agent-wallet.py`
+5. Call: `manager.create_wallet(name, network)`
+6. Present results: Address and save location
+
+#### Check Balance
+**User says:** "Check balance of [wallet]", "How much HTN in [wallet]?", "What's the balance?"
+
+**Agent actions:**
+1. Execute: `python3 {skill_path}/scripts/agent-transact.py`
+2. Call: `executor.get_balance(wallet_name)`
+3. Convert sompi to HTN and display
+4. If error, explain (wallet not found, network issue, etc.)
+
+#### Transfer Funds
+**User says:** "Transfer [amount] HTN from [wallet] to [address]", "Send [amount] to [address]"
+
+**Agent actions:**
+1. Resolve recipient (check address book if label used)
+2. Check if auto-approve is enabled for this wallet/amount
+3. If confirmation needed, ask: "Send [amount] HTN to [recipient]?"
+4. Execute: `python3 {skill_path}/scripts/agent-transact.py`
+5. Call: `executor.transfer(from_wallet, to_address, amount)`
+6. Display transaction result (success/failure, tx ID)
+
+#### List Wallets
+**User says:** "List my wallets", "Show wallets", "What wallets do I have?"
+
+**Agent actions:**
+1. Execute: `python3 {skill_path}/scripts/agent-wallet.py`
+2. Call: `manager.list_wallets()`
+3. Display names, addresses, networks
+
+#### Add Address to Book
+**User says:** "Save address [label] as [address]", "Add [label] to address book"
+
+**Agent actions:**
+1. Execute: `python3 {skill_path}/scripts/agent-wallet.py`
+2. Call: `manager.add_address(label, address)`
+3. Confirm: "Address saved"
+
+#### Consolidate UTXOs
+**User says:** "Consolidate UTXOs in [wallet]", "Compound UTXOs", "Optimize [wallet]"
+
+**Agent actions:**
+1. Check current UTXO count
+2. If > 10 UTXOs, suggest consolidation
+3. Ask for confirmation
+4. Execute: `python3 {skill_path}/scripts/agent-transact.py`
+5. Call: `executor.consolidate_utxos(wallet_name)`
+
+### Quick Reference Commands
 
 ```
-"Initialize hoosat wallet system"
-"Create wallet mining on testnet"
-"Check balance of mining"
-"Transfer 5 HTN from mining to hoosat:xxx..."
-"Consolidate UTXOs in mining"
-"Save address exchange as hoosat:xxx..."
+Initialize: "Initialize hoosat wallet system"
+Create:     "Create wallet [name] on [network]"
+Balance:    "Check balance of [wallet]"  
+Transfer:   "Transfer [amount] HTN from [wallet] to [address]"
+List:       "List my wallets"
+Address:    "Save address [label] as [address]"
+Consolidate:"Consolidate UTXOs in [wallet]"
 ```
 
 ### Security
@@ -381,10 +454,75 @@ Located at: `~/.hoosat-wallets/config.json`
 ### Scripts
 
 - `agent-wallet.py`: Main wallet management
-- `agent-crypto.py`: Encryption/decryption utilities
+- `agent-crypto.py`: Encryption/decryption utilities  
 - `agent-transact.py`: Transaction execution
 
 See [references/agent-wallet-guide.md](references/agent-wallet-guide.md) for complete documentation.
+
+### Setup and Dependencies
+
+**Prerequisites:**
+```bash
+pip3 install cryptography requests
+```
+
+If installation fails due to system restrictions:
+```bash
+pip3 install --user cryptography requests
+# OR
+python3 -m pip install --break-system-packages cryptography requests
+```
+
+### State Management
+
+The agent maintains wallet state across conversations:
+
+1. **Persistent Storage**: `~/.hoosat-wallets/` directory
+   - `wallets.enc` - Encrypted wallet data
+   - `address-book.json` - Saved addresses
+   - `config.json` - Agent configuration
+   - `transactions.log` - Transaction history
+
+2. **Session State**:
+   - `HOOSAT_AGENT_PASSWORD` env var for current session
+   - 1-hour timeout (auto-lock)
+   - Re-authentication required after timeout
+
+3. **Context Awareness**:
+   - Agent remembers current wallet directory
+   - Tracks which wallets are unlocked
+   - Maintains address book mappings
+
+### Error Handling
+
+Common errors and responses:
+
+**"Wallet system locked"**
+- Ask for password: "Please provide wallet password to unlock"
+- Set: `export HOOSAT_AGENT_PASSWORD=your_password`
+
+**"No such file or directory" (dependencies)**
+- Install: `pip3 install cryptography requests`
+
+**"Insufficient balance"**
+- Check balance first
+- Verify network (mainnet vs testnet)
+
+**"Invalid address"**
+- Check format: must start with `hoosat:` or `hoosattest:`
+- Verify no typos
+
+**"Wallet already exists"**
+- Use different name
+- Or delete existing: "Delete wallet [name] first"
+
+### Best Practices for Agents
+
+1. **Always confirm high-value transactions** (> 1 HTN)
+2. **Check dry-run mode** before real transactions
+3. **Suggest testnet** for new users
+4. **Remind about backups** after wallet creation
+5. **Lock session** when user indicates they're done
 
 ## Resources
 
