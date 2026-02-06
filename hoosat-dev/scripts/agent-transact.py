@@ -11,7 +11,10 @@ import json
 import time
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
-from .agent_wallet import AgentWalletManager, Wallet
+try:
+    from .agent_wallet import AgentWalletManager, Wallet
+except ImportError:
+    from agent_wallet import AgentWalletManager, Wallet
 
 
 @dataclass

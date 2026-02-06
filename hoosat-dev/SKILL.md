@@ -463,14 +463,19 @@ See [references/agent-wallet-guide.md](references/agent-wallet-guide.md) for com
 
 **Prerequisites:**
 ```bash
-pip3 install cryptography requests
+pip3 install cryptography requests bech32 blake3 base58
 ```
 
-If installation fails due to system restrictions:
+**Note on secp256k1:** The `secp256k1` package requires compilation and `pkg-config`. If unavailable, use the pure-Python alternative:
 ```bash
-pip3 install --user cryptography requests
+pip3 install ecdsa
+```
+
+**If installation fails due to system restrictions:**
+```bash
+pip3 install --user cryptography requests bech32 blake3 base58
 # OR
-python3 -m pip install --break-system-packages cryptography requests
+python3 -m pip install --break-system-packages cryptography requests bech32 blake3 base58
 ```
 
 ### State Management

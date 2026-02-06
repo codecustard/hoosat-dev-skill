@@ -11,7 +11,10 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
-from .agent_crypto import AgentCrypto, SessionManager
+try:
+    from .agent_crypto import AgentCrypto, SessionManager
+except ImportError:
+    from agent_crypto import AgentCrypto, SessionManager
 
 # Default paths
 DEFAULT_WALLET_DIR = Path.home() / '.hoosat-wallets'
