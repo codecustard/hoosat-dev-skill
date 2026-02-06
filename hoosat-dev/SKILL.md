@@ -23,6 +23,10 @@ This skill provides comprehensive support for Hoosat blockchain development. Hoo
 
 ## Quick Start
 
+### Check Network Status
+
+To get current network information (block height, supply, hashrate, etc.), see the **Checking Network Status** section in [references/api-reference.md](references/api-reference.md#checking-network-status).
+
 ### Choose Your SDK
 
 | Environment | Package | Install |

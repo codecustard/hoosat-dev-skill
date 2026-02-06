@@ -49,6 +49,36 @@ HTTP Status Codes:
 - **404** - Not Found
 - **500** - Internal Server Error
 
+## Common Tasks
+
+### Checking Network Status
+
+When users ask about network status or current network info, query these endpoints:
+
+| Endpoint | Purpose | Data Returned |
+|----------|---------|---------------|
+| `GET /node/info` | Node status & version | `serverVersion`, `isSynced`, `mempoolSize`, `p2pId` |
+| `GET /node/blue-score` | Block height | `blueScore` |
+| `GET /node/coin-supply` | Token supply | `circulatingSupply`, `maxSupply` |
+| `GET /node/estimate-hashrate` | Network hashrate | `networkHashesPerSecond` |
+| `GET /node/health` | Health status | `healthy` boolean |
+| `GET /network/info` | Network type | `currentNetwork` (mainnet/testnet) |
+| `GET /blockchain/tip-hash` | Latest block | `selectedTipHash` |
+
+**Example - Get complete network overview:**
+```bash
+# Query all network status endpoints
+curl https://proxy.hoosat.net/api/v1/node/info
+curl https://proxy.hoosat.net/api/v1/node/blue-score
+curl https://proxy.hoosat.net/api/v1/node/coin-supply
+curl https://proxy.hoosat.net/api/v1/node/estimate-hashrate
+curl https://proxy.hoosat.net/api/v1/network/info
+curl https://proxy.hoosat.net/api/v1/node/health
+curl https://proxy.hoosat.net/api/v1/blockchain/tip-hash
+```
+
+See individual endpoint sections below for detailed response formats.
+
 ## Interactive Documentation
 
 Full interactive API documentation available at:
