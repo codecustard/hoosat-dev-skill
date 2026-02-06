@@ -320,14 +320,19 @@ See [references/hrc20-tokens.md](references/hrc20-tokens.md) for:
 - Transfer and approval mechanisms
 - Integration patterns
 
-## Scripts and Utilities
-
-The `scripts/` directory contains utility scripts:
-
-- `generate-address.py`: Generate Hoosat addresses with BLAKE3
-- `build-transaction.py`: Build and sign transactions
-
 ## Agent Wallet System
+
+**PRIMARY:** Use `agent-wallet.py` for ALL wallet operations (create, manage, transact).
+
+**Note:** `generate-address.py` exists as a standalone utility but should NOT be used for agent workflows. Always use the agent wallet system for proper wallet management.
+
+### Features
+
+- **Encrypted Wallet Storage**: AES-256 encryption with PBKDF2 key derivation
+- **Balance Queries**: Real-time balance checking via REST API
+- **Transaction Execution**: Transfer HTN with auto-approve or confirmation
+- **Address Book**: Save and label frequently used addresses
+- **UTXO Consolidation**: Optimize wallet by combining small UTXOs
 
 The agent wallet system enables AI agents to actively manage Hoosat wallets and execute transactions.
 
@@ -354,16 +359,20 @@ The agent wallet system enables AI agents to actively manage Hoosat wallets and 
    - Call `manager.initialize(password)` 
    - Confirm: "Wallet system initialized at ~/.hoosat-wallets/"
 
-#### Create Wallet  
-**User says:** "Create wallet [name] on [network]", "Make a [name] wallet", "Generate wallet for [purpose]"
+#### Create Wallet (USE THIS FOR ALL WALLET CREATION)
+**User says:** "Create wallet [name] on [network]", "Make a [name] wallet", "Generate wallet for [purpose]", "Give me a wallet"
+
+**⚠️ IMPORTANT: ALWAYS use agent-wallet.py for wallet creation. NEVER use generate-address.py.**
 
 **Agent actions:**
-1. Check if wallet system is initialized
-2. If not initialized, do that first
-3. Unlock with password from environment/session
-4. Execute: `python3 {skill_path}/scripts/agent-wallet.py`
+1. **MUST use:** `python3 {skill_path}/scripts/agent-wallet.py`
+2. Check if wallet system is initialized
+3. If not initialized, do that first
+4. Unlock with password from environment/session
 5. Call: `manager.create_wallet(name, network)`
 6. Present results: Address and save location
+
+**Do NOT use generate-address.py** - it's a standalone utility, not part of the agent wallet system.
 
 #### Check Balance
 **User says:** "Check balance of [wallet]", "How much HTN in [wallet]?", "What's the balance?"
