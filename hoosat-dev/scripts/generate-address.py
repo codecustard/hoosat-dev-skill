@@ -5,6 +5,7 @@ Hoosat Address Generator
 Generates Hoosat addresses with their corresponding private keys.
 Supports mainnet and testnet networks.
 Uses BLAKE3 hashing (Hoosat-specific, not kHash like Kaspa).
+Uses Hoosat custom bech32 format with ':' separator.
 
 Usage:
     python generate-address.py [--network mainnet|testnet] [--count 1]
@@ -19,13 +20,12 @@ import hashlib
 import os
 import secrets
 import sys
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
-try:
-    import bech32
-except ImportError:
-    print("Error: bech32 library not found. Install with: pip install bech32")
-    sys.exit(1)
+# Hoosat Bech32 Constants
+CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
+CHECKSUM_LENGTH = 8
+GENERATOR = [0x98f2bc8e61, 0x79b76d99e2, 0xf33e5fb3c4, 0xae2eabe2a8, 0x1e4f43e470]
 
 try:
     import blake3
@@ -49,6 +49,144 @@ if secp256k1 is None and SigningKey is None:
     print("  pip install ecdsa  (recommended - pure Python, no compilation)")
     print("  pip install secp256k1  (requires compilation)")
     sys.exit(1)
+
+
+def hoosat_bech32_encode(prefix: str, payload: bytes) -> str:
+    """Encode to Hoosat bech32 format with ':' separator."""
+    # Prepend version byte (0x01 for ECDSA)
+    data = bytes([0x01]) + payload
+    
+    # Convert from 8-bit to 5-bit
+    converted = convert_bits(data, 8, 5, True)
+    
+    # Calculate checksum
+    checksum = calculate_checksum(prefix, converted)
+    combined = converted + checksum
+    
+    # Encode to base32
+    base32_string = encode_to_base32(combined)
+    
+    return f"{prefix}:{base32_string}"
+
+
+def hoosat_bech32_decode(encoded: str):
+    """Decode Hoosat bech32 address."""
+    # Validation
+    if len(encoded) < CHECKSUM_LENGTH + 2:
+        raise ValueError(f"Invalid bech32 string length {len(encoded)}")
+    
+    # Work with lowercase
+    normalized = encoded.lower()
+    
+    # Find last colon
+    colon_index = normalized.rfind(':')
+    if colon_index < 1 or colon_index + CHECKSUM_LENGTH + 1 > len(normalized):
+        raise ValueError('Invalid index of ":"')
+    
+    # Split prefix and data
+    prefix = normalized[:colon_index]
+    data_string = normalized[colon_index + 1:]
+    
+    # Decode from base32
+    decoded = decode_from_base32(data_string)
+    
+    # Verify checksum
+    if not verify_checksum(prefix, decoded):
+        raise ValueError("Checksum failed")
+    
+    # Remove checksum (last 8 bytes)
+    data_without_checksum = decoded[:-CHECKSUM_LENGTH]
+    
+    # Convert from 5-bit to 8-bit
+    converted = convert_bits(data_without_checksum, 5, 8, False)
+    
+    # Extract version and payload
+    version = converted[0]
+    payload = bytes(converted[1:])
+    
+    return prefix, payload, version
+
+
+def convert_bits(data, from_bits, to_bits, pad):
+    """Convert between bit groups."""
+    regrouped = []
+    next_byte = 0
+    filled_bits = 0
+    
+    for value in data:
+        next_byte = (next_byte << from_bits) | value
+        filled_bits += from_bits
+        
+        while filled_bits >= to_bits:
+            regrouped.append((next_byte >> (filled_bits - to_bits)) & ((1 << to_bits) - 1))
+            filled_bits -= to_bits
+    
+    if pad and filled_bits > 0:
+        regrouped.append((next_byte << (to_bits - filled_bits)) & ((1 << to_bits) - 1))
+    
+    return regrouped
+
+
+def calculate_checksum(prefix: str, data: List[int]) -> bytes:
+    """Calculate bech32 checksum."""
+    # Create checksum generator state
+    polymod = 1
+    
+    # Process prefix
+    for char in prefix:
+        polymod = polymod_step(polymod, ord(char) & 0x1f)
+    polymod = polymod_step(polymod, 0)
+    
+    # Process data
+    for value in data:
+        polymod = polymod_step(polymod, value)
+    
+    # Finalize
+    for _ in range(CHECKSUM_LENGTH):
+        polymod = polymod_step(polymod, 0)
+    
+    # Return checksum bytes
+    checksum = []
+    for i in range(CHECKSUM_LENGTH):
+        checksum.append((polymod >> (5 * (7 - i))) & 0x1f)
+    
+    return bytes(checksum)
+
+
+def polymod_step(prev: int, value: int) -> int:
+    """Single step of checksum polymod."""
+    b = prev >> 35
+    c = ((prev & 0x7ffffffff) << 5) ^ value
+    
+    for i in range(len(GENERATOR)):
+        if (b >> i) & 1:
+            c ^= GENERATOR[i]
+    
+    return c
+
+
+def verify_checksum(prefix: str, data: bytes) -> bool:
+    """Verify bech32 checksum."""
+    try:
+        calculated = calculate_checksum(prefix, list(data[:-CHECKSUM_LENGTH]))
+        return list(data[-CHECKSUM_LENGTH:]) == list(calculated)
+    except:
+        return False
+
+
+def encode_to_base32(data: bytes) -> str:
+    """Encode bytes to base32 string using CHARSET."""
+    return ''.join(CHARSET[b] for b in data)
+
+
+def decode_from_base32(s: str) -> bytes:
+    """Decode base32 string to bytes."""
+    result = []
+    for char in s.lower():
+        if char not in CHARSET:
+            raise ValueError(f"Invalid character '{char}'")
+        result.append(CHARSET.index(char))
+    return bytes(result)
 
 
 class HoosatAddressGenerator:
@@ -150,7 +288,7 @@ class HoosatAddressGenerator:
             raise ImportError("Either secp256k1 or ecdsa library required for key derivation")
     
     def public_key_to_address(self, public_key: bytes) -> str:
-        """Convert public key to Hoosat address using BLAKE3."""
+        """Convert public key to Hoosat address using BLAKE3 and custom bech32."""
         # BLAKE3 hash of public key (Hoosat uses BLAKE3, not SHA256 like Kaspa)
         if blake3 is not None:
             blake3_hash = blake3.blake3(public_key).digest()
@@ -165,11 +303,8 @@ class HoosatAddressGenerator:
         # Use first 20 bytes for address (similar to hash160)
         hash160 = blake3_hash[:20]
         
-        # Convert to 5-bit groups for bech32
-        converted = bech32.convertbits(list(hash160), 8, 5)
-        
-        # Encode with bech32
-        address = bech32.bech32_encode(self.prefix, converted)
+        # Encode with Hoosat custom bech32 (uses ':' separator)
+        address = hoosat_bech32_encode(self.prefix, hash160)
         
         return address
     
@@ -189,14 +324,14 @@ class HoosatAddressGenerator:
     def validate_address(self, address: str) -> bool:
         """Validate a Hoosat address."""
         try:
-            prefix, data = bech32.bech32_decode(address)
+            prefix, payload, version = hoosat_bech32_decode(address)
             
             # Check prefix matches network
             if prefix != self.prefix:
                 return False
             
-            # Check data is valid
-            if data is None or len(data) == 0:
+            # Check payload is valid
+            if payload is None or len(payload) == 0:
                 return False
             
             return True
@@ -206,7 +341,7 @@ class HoosatAddressGenerator:
     def get_address_info(self, address: str) -> dict:
         """Get information about an address."""
         try:
-            prefix, data = bech32.bech32_decode(address)
+            prefix, payload, version = hoosat_bech32_decode(address)
             
             # Determine network from prefix
             network = None
@@ -218,16 +353,13 @@ class HoosatAddressGenerator:
             if network is None:
                 return {"valid": False, "error": "Unknown prefix"}
             
-            # Convert back to hash160
-            hash160_bytes = bytes(bech32.convertbits(data, 5, 8, False))
-            
             return {
                 "valid": True,
                 "address": address,
                 "network": network,
                 "prefix": prefix,
-                "hash160": hash160_bytes.hex(),
-                "version": data[0] if data else None
+                "hash160": payload.hex(),
+                "version": version
             }
         except Exception as e:
             return {"valid": False, "error": str(e)}
