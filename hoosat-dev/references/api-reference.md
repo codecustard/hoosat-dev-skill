@@ -64,6 +64,7 @@ When users ask about network status or current network info, query these endpoin
 | `GET /node/health` | Health status | `healthy` boolean |
 | `GET /network/info` | Network type | `currentNetwork` (mainnet/testnet) |
 | `GET /blockchain/tip-hash` | Latest block | `selectedTipHash` |
+| `GET /blockchain/dag-info` | DAG info & difficulty | `difficulty`, `blockCount`, `virtualDaaScore`, `tipHashes`, `virtualParentHashes` |
 
 **Example - Get complete network overview:**
 ```bash
@@ -75,6 +76,7 @@ curl https://proxy.hoosat.net/api/v1/node/estimate-hashrate
 curl https://proxy.hoosat.net/api/v1/network/info
 curl https://proxy.hoosat.net/api/v1/node/health
 curl https://proxy.hoosat.net/api/v1/blockchain/tip-hash
+curl https://proxy.hoosat.net/api/v1/blockchain/dag-info
 ```
 
 See individual endpoint sections below for detailed response formats.
@@ -261,9 +263,29 @@ Get the total block count.
 
 ### Get DAG Info
 
-Get DAG (Directed Acyclic Graph) information.
+Get DAG (Directed Acyclic Graph) information including network difficulty.
 
 **Endpoint:** `GET /blockchain/dag-info`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tipHashes": ["3b2552a0ca5818bd5fe82974e0786542b078ffc0faf4c7f1ef2da85ebf9e5c85"],
+    "virtualParentHashes": ["fed313651752dd39bd41524b43bab5960335163840051a7cded619643bb4bdf3"],
+    "networkName": "hoosat-mainnet",
+    "blockCount": "181605",
+    "headerCount": "8618046",
+    "difficulty": 175391520.33,
+    "pastMedianTime": "1770380181613",
+    "pruningPointHash": "8b082b6068dee64c3d1086f0558b58bbfa04b88eb6245638a40e4ceaca11312e",
+    "virtualDaaScore": "131190400"
+  },
+  "timestamp": 1770380210127,
+  "path": "/api/v1/blockchain/dag-info"
+}
+```
 
 ---
 
