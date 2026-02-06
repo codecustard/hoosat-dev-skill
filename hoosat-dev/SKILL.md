@@ -327,6 +327,65 @@ The `scripts/` directory contains utility scripts:
 - `generate-address.py`: Generate Hoosat addresses with BLAKE3
 - `build-transaction.py`: Build and sign transactions
 
+## Agent Wallet System
+
+The agent wallet system enables AI agents to actively manage Hoosat wallets and execute transactions.
+
+### Features
+
+- **Encrypted Wallet Storage**: AES-256 encryption with PBKDF2 key derivation
+- **Balance Queries**: Real-time balance checking via REST API
+- **Transaction Execution**: Transfer HTN with auto-approve or confirmation
+- **Address Book**: Save and label frequently used addresses
+- **UTXO Consolidation**: Optimize wallet by combining small UTXOs
+
+### Quick Commands
+
+```
+"Initialize hoosat wallet system"
+"Create wallet mining on testnet"
+"Check balance of mining"
+"Transfer 5 HTN from mining to hoosat:xxx..."
+"Consolidate UTXOs in mining"
+"Save address exchange as hoosat:xxx..."
+```
+
+### Security
+
+- Master password required to unlock (stored in `HOOSAT_AGENT_PASSWORD` env var)
+- Session timeout: 1 hour
+- Auto-approve: Configurable per-wallet limits
+- Dry-run mode: Test transactions without broadcasting
+
+### Configuration
+
+Located at: `~/.hoosat-wallets/config.json`
+
+```json
+{
+  "autoApprove": {
+    "enabled": false,
+    "wallets": {
+      "mining": {
+        "enabled": true,
+        "maxAmount": "1000000000"
+      }
+    }
+  },
+  "features": {
+    "dryRun": true
+  }
+}
+```
+
+### Scripts
+
+- `agent-wallet.py`: Main wallet management
+- `agent-crypto.py`: Encryption/decryption utilities
+- `agent-transact.py`: Transaction execution
+
+See [references/agent-wallet-guide.md](references/agent-wallet-guide.md) for complete documentation.
+
 ## Resources
 
 ### References
@@ -338,6 +397,7 @@ The `scripts/` directory contains utility scripts:
 - **wallet-integration.md**: Wallet integration patterns
 - **node-operations.md**: Node operations guide
 - **hrc20-tokens.md**: HRC20 token standard
+- **agent-wallet-guide.md**: Agent wallet system documentation
 
 ### Assets
 
