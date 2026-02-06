@@ -461,21 +461,36 @@ See [references/agent-wallet-guide.md](references/agent-wallet-guide.md) for com
 
 ### Setup and Dependencies
 
-**Prerequisites:**
+**Recommended Installation (Pure Python - No Compilation):**
 ```bash
-pip3 install cryptography requests bech32 blake3 base58
+pip3 install ecdsa bech32 blake3 base58
 ```
 
-**Note on secp256k1:** The `secp256k1` package requires compilation and `pkg-config`. If unavailable, use the pure-Python alternative:
+**Alternative with secp256k1 (requires compilation):**
 ```bash
-pip3 install ecdsa
+# Install pkg-config first (macOS)
+brew install pkg-config
+
+# Then install Python packages
+pip3 install secp256k1 bech32 blake3 base58
 ```
 
-**If installation fails due to system restrictions:**
+**For Agent Wallet System (additional dependencies):**
 ```bash
-pip3 install --user cryptography requests bech32 blake3 base58
-# OR
-python3 -m pip install --break-system-packages cryptography requests bech32 blake3 base58
+pip3 install cryptography requests
+```
+
+**macOS Installation (if standard pip fails):**
+```bash
+# Option 1: Use --user flag
+pip3 install --user ecdsa bech32 blake3 base58 cryptography requests
+
+# Option 2: Use --break-system-packages (not recommended but works)
+pip3 install --break-system-packages ecdsa bech32 blake3 base58 cryptography requests
+
+# Option 3: Use Homebrew Python
+brew install python
+/opt/homebrew/bin/pip3 install ecdsa bech32 blake3 base58 cryptography requests
 ```
 
 ### State Management

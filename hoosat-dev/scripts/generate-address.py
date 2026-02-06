@@ -16,6 +16,7 @@ Example:
 
 import argparse
 import hashlib
+import os
 import secrets
 import sys
 from typing import Tuple, Optional
@@ -35,8 +36,19 @@ except ImportError:
 try:
     import secp256k1
 except ImportError:
-    print("Warning: secp256k1 library not found. Install with: pip install secp256k1")
     secp256k1 = None
+
+try:
+    from ecdsa import SigningKey, SECP256k1
+except ImportError:
+    SigningKey = None
+    SECP256k1 = None
+
+if secp256k1 is None and SigningKey is None:
+    print("Error: Either secp256k1 or ecdsa library required. Install with:")
+    print("  pip install ecdsa  (recommended - pure Python, no compilation)")
+    print("  pip install secp256k1  (requires compilation)")
+    sys.exit(1)
 
 
 class HoosatAddressGenerator:
@@ -107,17 +119,35 @@ class HoosatAddressGenerator:
             sys.exit(1)
     
     def private_key_to_public_key(self, private_key: bytes, compressed: bool = True) -> bytes:
-        """Convert private key to public key using secp256k1."""
-        if secp256k1 is None:
-            raise ImportError("secp256k1 library required for key derivation")
+        """Convert private key to public key using secp256k1 or ecdsa."""
+        if secp256k1 is not None:
+            # Use secp256k1 library (C extension, faster)
+            privkey = secp256k1.PrivateKey(private_key)
+            pubkey = privkey.pubkey
+            
+            if compressed:
+                return pubkey.serialize()
+            else:
+                return pubkey.serialize(compressed=False)
         
-        privkey = secp256k1.PrivateKey(private_key)
-        pubkey = privkey.pubkey
+        elif SigningKey is not None:
+            # Use ecdsa library (pure Python, no compilation needed)
+            sk = SigningKey.from_string(private_key, curve=SECP256k1)
+            vk = sk.verifying_key
+            
+            if compressed:
+                # Compressed format: prefix + x-coordinate
+                x = vk.to_string()[:32]
+                y = vk.to_string()[32:]
+                # Determine prefix based on y-coordinate parity
+                prefix = b'\x02' if int.from_bytes(y, 'big') % 2 == 0 else b'\x03'
+                return prefix + x
+            else:
+                # Uncompressed format: 0x04 + x + y
+                return b'\x04' + vk.to_string()
         
-        if compressed:
-            return pubkey.serialize()
         else:
-            return pubkey.serialize(compressed=False)
+            raise ImportError("Either secp256k1 or ecdsa library required for key derivation")
     
     def public_key_to_address(self, public_key: bytes) -> str:
         """Convert public key to Hoosat address using BLAKE3."""
@@ -289,6 +319,11 @@ def main():
     
     # Save to file if specified
     if args.output:
+        # Create output directory if it doesn't exist
+        output_dir = os.path.dirname(args.output)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        
         if args.format == 'json':
             import json
             with open(args.output, 'w') as f:
